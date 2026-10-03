@@ -52,12 +52,14 @@ def build(a):
             data = text.encode("utf-8")
         if n == "AndroidManifest.xml":
             data, text = edit_manifest(data)
-            open(a.out + ".manifest.xml", "w").write(text)
+            if not a.template:
+                open(a.out + ".manifest.xml", "w").write(text)
         files.append((n, data, info.compress_type != zipfile.ZIP_STORED and not n.endswith(".so") and n != "resources.arsc"))
     have = {f[0] for f in files}
     seen = set()
-    files.append(("assets/game.droid", open(a.data, "rb").read(), True))
-    for base, _, fs in os.walk(a.game):
+    if a.data:
+        files.append(("assets/game.droid", open(a.data, "rb").read(), True))
+    for base, _, fs in (os.walk(a.game) if a.game else []):
         for f in fs:
             full = os.path.join(base, f)
             rel = os.path.relpath(full, a.game).replace(os.sep, "/")
@@ -110,16 +112,21 @@ def build(a):
                     zi.extra = struct.pack("<HH", 0xD935, pad - 4) + b"\x00" * (pad - 4)
             z.writestr(zi, data)
         z.close()
-    apk_sign.sign(unsigned, a.out, a.key)
-    os.remove(unsigned)
+    if a.template:
+        # Template for the Python-free installer (quest/Build-Apk.csx adds the game and signs).
+        os.replace(unsigned, a.out)
+    else:
+        apk_sign.sign(unsigned, a.out, a.key)
+        os.remove(unsigned)
     print("Wrote", a.out, "(%d files, runner ABIs kept: arm64-v8a)" % len(files))
 
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--runner", required=True)
-    p.add_argument("--data", required=True)
-    p.add_argument("--game", required=True)
+    p.add_argument("--data")
+    p.add_argument("--game")
+    p.add_argument("--template", action="store_true", help="no game files, unsigned: makes runner/vhrquest-template.apk")
     p.add_argument("--lib", required=True)
     p.add_argument("--dex", required=True, help="VHRQuest Java extension class (classes.dex from d8)")
     p.add_argument("--loader")
