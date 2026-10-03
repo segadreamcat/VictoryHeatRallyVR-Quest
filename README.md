@@ -24,6 +24,7 @@ This repository has **no game files**. The installer builds the Quest app on you
 - **Cockpit colours that match your car:**
   - The interior trim, the hood and the driver's gloves take on the colours of the car and paint job you pick.
   - The racing sleeves get a design that suits the colour: flames, a checkered band, a lightning bolt, stripes or chevrons.
+  - **Hands on the wheel** are built in: driver art for all 64 car paints ships with the mod.
 - **Menus and messages in VR:**
   - Menus appear on a big floating screen.
   - In races, the countdown, GOAL, the pause menu and the continue screen appear on a panel in front of you.
@@ -34,45 +35,44 @@ This repository has **no game files**. The installer builds the Quest app on you
   - **Developer Mode** must be on. In the Meta Horizon phone app: Devices → your headset → Headset settings → Developer Mode.
 - **A Windows PC** with a USB cable that carries data, for example the Link cable or the one that came with the headset.
 - **Victory Heat Rally on Steam**, at the supported build. The installer checks it.
-- **Python 3** from <https://www.python.org/downloads/>. Tick **"Add python.exe to PATH"** when installing.
-- **UndertaleModTool CLI for Windows** from <https://github.com/UnderminersTeam/UndertaleModTool/releases>.
-  - Extract the whole thing to `tools\UndertaleModCli\` so that `tools\UndertaleModCli\UndertaleModCli.exe` exists.
-- **adb**, from Android SDK Platform-Tools at <https://developer.android.com/tools/releases/platform-tools>.
-  - Extract it to `tools\platform-tools\`, or keep an existing Android SDK install.
-- **Driver artwork:** a 1024 × 559 PNG of the hands on the wheel. This is the same file the PC VR mod uses (see *Driver artwork* below).
-  - Without it the cockpit has no hands or steering wheel.
+
+Everything else is included or downloaded automatically. You don't need Python, extra artwork or any manual tool setup.
 
 ## Install
 
-1. Download this repository: Code → Download ZIP. Extract it somewhere, such as `Documents\VictoryHeatRallyVR-Quest`.
-2. Put UndertaleModCli and, if needed, platform-tools into the `tools` folder as described in Requirements.
-3. Close the game. Plug in the headset, put it on, and accept **Allow USB debugging**. Tick *Always allow from this computer*.
-4. Double-click **`Install-Quest.bat`**.
+1. Download the latest release ZIP from the **Releases** page (or Code → Download ZIP). Extract it somewhere, such as `Documents\VictoryHeatRallyVR-Quest`.
+2. Close the game. Plug in the headset, put it on, and accept **Allow USB debugging**. Tick *Always allow from this computer*.
+3. Double-click **`Install-Quest.bat`**.
 
 The installer:
 
-1. Checks your game files.
-2. Downloads the OpenXR loader from Maven Central.
+1. Finds your Steam copy of the game, including other Steam library drives, and checks it.
+2. On the first run only, downloads the tools it needs into `tools\`:
+   - UndertaleModTool CLI 0.9.2.0 from its GitHub release page.
+   - Android platform-tools (adb) from Google.
+   - The Khronos OpenXR loader from Maven Central.
 3. Patches your game data for the Quest.
-4. Builds and signs `VHRQuest.apk`.
+4. Builds and signs `VHRQuest.apk` with the driver art included.
 5. Installs it.
 
 The first run takes a few minutes. Then, in the headset, open **Library → Unknown Sources → VHR Quest**.
 
-**Game in a different folder?** Run it from PowerShell:
+**Game not found?** Run it from PowerShell with your game folder:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Install-Quest.ps1 -GameDirectory 'D:\SteamLibrary\steamapps\common\Victory Heat Rally' -DriverArtwork 'D:\Art\VHR-driver.png'
+powershell -ExecutionPolicy Bypass -File .\Install-Quest.ps1 -GameDirectory 'D:\SteamLibrary\steamapps\common\Victory Heat Rally'
 ```
 
 Other options:
 
 - `-BuildOnly` only builds `build\VHRQuest.apk` and doesn't install it.
-- `-UndertaleModCli <path>` and `-Adb <path>` point to tools stored elsewhere.
+- `-UndertaleModCli <path>` and `-Adb <path>` use tools you already have.
 
 If the PC VR mod is installed, the installer uses the original game data that mod backed up. Your PC install is not changed.
 
 **Updating:** download the new version and run `Install-Quest.bat` again. Saves and settings stay on the headset.
+
+**"A copy signed by someone else is installed"** means the app on the headset was built on another PC. Uninstall VHR Quest from the headset first (this also removes its saves), then run the installer again.
 
 ## Controls
 
@@ -124,14 +124,7 @@ Attach both files to an issue. The log has a `timing:` line every 3 seconds (fra
 
 ## Driver artwork
 
-The cockpit's hands and steering wheel come from a 1024 × 559 PNG:
-
-- The wheel is centred around (512, 230).
-- The hands are above y = 245.
-- The arms run down to the bottom corners.
-- The grey background is near RGB (114, 130, 143), or the image can be transparent.
-
-It is **not included**, because permission to redistribute the reference image hasn't been confirmed. If the PC VR mod is installed, the installer finds `VHR-driver.png` in the game folder automatically. Otherwise, pass `-DriverArtwork`.
+The hands, steering wheel, gloves and sleeves are original art made for this mod. They are included in `quest/art/`: one clean image plus one prebaked image for each of the 64 car paints, so the headset does no recolouring while you play. You don't need to supply anything.
 
 ## Personal use only
 
@@ -149,11 +142,12 @@ Victory Heat Rally is a GameMaker game, so its bytecode runs on GameMaker's own 
   - Touch input, the virtual wheel and haptics.
   - Foveation and dynamic resolution.
 - `java/VHRQuest.java` builds `bin/VHRQuest.dex`, the GameMaker Java extension that forwards to the bridge. It also stops GameMaker's phone-style vsync pacing in VR.
-- `quest/build_apk.py` repacks `runner/gamemaker-runner-2024.8.apk` around your patched data:
+- `quest/Build-Apk.csx`, also run by the UndertaleModTool CLI, repacks `runner/gamemaker-runner-2024.8.apk` around your patched data:
   - That APK is a blank GameMaker 2024.8 Android export, with no game content.
-  - It adds the Quest VR manifest entries and the OpenXR loader.
-  - It signs the result with a key created on your PC (`%USERPROFILE%\.vhrquest-key.pem`).
-- `quest/tools/gen_driver_art.py` prebakes the recoloured driver art for every car. `quest/paint-table.gml` and `quest/tools/paint-table.json` hold the colours measured from each car.
+  - It adds the Quest VR manifest (`quest/AndroidManifest-quest.bin`), the bridge, the OpenXR loader and the driver art.
+  - It zip-aligns the APK and signs it (APK Signature Scheme v2) with a key created on your PC (`%USERPROFILE%\.vhrquest-key.pem`).
+- `quest/paint-table.gml` and `quest/tools/paint-table.json` hold the colours measured from each car. `quest/tools/gen_driver_art.py` makes the prebaked art in `quest/art/` from the clean driver image.
+- `quest/build_apk.py`, `apk_sign.py` and `axml_edit.py` are the original Python build tools (developer use only, not needed to install). `axml_edit.py` made `AndroidManifest-quest.bin`.
 
 ### Rebuilding the native parts
 
@@ -173,5 +167,6 @@ These steps are optional; prebuilt files are in `bin/`.
 
 - Mod code: MIT (see `LICENSE`).
 - OpenXR loader: © The Khronos Group, Apache-2.0. It is downloaded at install time, not included.
+- UndertaleModTool CLI: © Underminers Team, GPL-3.0. It is downloaded at install time, not included.
 - GameMaker runner: © YoYo Games, included as an exported blank project.
 - Victory Heat Rally and its assets belong to their respective owners.

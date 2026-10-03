@@ -1,0 +1,8 @@
+build/
+logs/
+tools/*
+!tools/README.txt
+*.apk
+!runner/*.apk
+*.pem
+__pycache__/
